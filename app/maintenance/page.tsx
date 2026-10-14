@@ -69,7 +69,7 @@ export default function MaintenancePage() {
 
   const totalCost = tasks.reduce((acc, t) => acc + (t.actualCost || t.estimatedCost), 0);
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) {
       toast.error('Please enter task title');
@@ -78,7 +78,7 @@ export default function MaintenancePage() {
 
     const staff = staffMembers.find((s) => s.id === assignedStaffId);
 
-    const newTask = operationsService.createMaintenanceTask({
+    const newTask = await operationsService.createMaintenanceTask({
       title,
       propertyId,
       roomId: roomId || undefined,

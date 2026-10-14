@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
@@ -25,6 +25,7 @@ import {
   UserCheck,
   TrendingUp,
   Activity,
+  RefreshCw,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -50,8 +51,40 @@ import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [dataVersion, setDataVersion] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Fetch live calculated metrics from localStorage store
+  useEffect(() => {
+    let mounted = true;
+    const syncBackend = async () => {
+      try {
+        setIsSyncing(true);
+        await Promise.allSettled([
+          propertyService.fetchProperties(),
+          tenantService.fetchTenants(),
+          financeService.fetchInvoices(),
+          financeService.fetchPayments(),
+          financeService.fetchExpenses(),
+          operationsService.fetchComplaints(),
+          bookingService.fetchBookings(),
+          bookingService.fetchMoveIns(),
+        ]);
+        if (mounted) {
+          setDataVersion((v) => v + 1);
+        }
+      } catch (err) {
+        console.warn('Dashboard sync from backend failed:', err);
+      } finally {
+        if (mounted) setIsSyncing(false);
+      }
+    };
+    syncBackend();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Fetch live calculated metrics from store
   const properties = propertyService.getProperties();
   const rooms = propertyService.getRooms();
   const beds = propertyService.getBeds();

@@ -95,7 +95,7 @@ export default function TenantsPage() {
     return matchesSearch && matchesProp && matchesStatus && matchesPayment;
   });
 
-  const handleAddTenant = (e: React.FormEvent) => {
+  const handleAddTenant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone || !email || !propertyId) {
       toast.error('Please enter name, phone, email, and choose property');
@@ -104,7 +104,7 @@ export default function TenantsPage() {
 
     const selectedBedObj = availableBeds.find((b) => b.id === bedId);
 
-    const newTenant = tenantService.createTenant({
+    const newTenant = await tenantService.createTenant({
       name,
       phone,
       email,

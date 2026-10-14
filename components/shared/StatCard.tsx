@@ -43,7 +43,7 @@ export function StatCard({
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {title}
           </p>
-          <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl" suppressHydrationWarning>
             {value}
           </p>
         </div>

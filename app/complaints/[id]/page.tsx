@@ -62,8 +62,8 @@ export default function ComplaintDetailPage({ params }: { params: Promise<{ id: 
     );
   }
 
-  const handleStatusChange = (status: ComplaintStatus) => {
-    const updated = operationsService.updateComplaint(complaint.id, {
+  const handleStatusChange = async (status: ComplaintStatus) => {
+    const updated = await operationsService.updateComplaint(complaint.id, {
       status,
       ...(status === 'resolved' ? { resolvedDate: new Date().toISOString().split('T')[0] } : {}),
       resolutionRemarks,
@@ -74,11 +74,11 @@ export default function ComplaintDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const handleAddComment = (e: React.FormEvent) => {
+  const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
 
-    const updated = operationsService.addComplaintComment(complaint.id, {
+    const updated = await operationsService.addComplaintComment(complaint.id, {
       senderName: 'Facility Manager',
       role: 'Staff',
       message: commentText.trim(),

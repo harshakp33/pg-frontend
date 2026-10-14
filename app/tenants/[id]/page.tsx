@@ -99,13 +99,13 @@ export default function TenantProfilePage({ params }: { params: Promise<{ id: st
     }
   };
 
-  const handleUploadMockDoc = (e: React.FormEvent) => {
+  const handleUploadMockDoc = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!docTitle) {
       toast.error('Please enter a document title');
       return;
     }
-    const updated = tenantService.addDocument(tenant.id, {
+    const updated = await tenantService.addDocument(tenant.id, {
       title: docTitle,
       type: docType,
       fileUrl: '/docs/mock-document.pdf',

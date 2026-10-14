@@ -70,7 +70,7 @@ export default function VisitorsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleCheckIn = (e: React.FormEvent) => {
+  const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!visitorName || !phone || !tenantId) {
       toast.error('Please enter visitor name, phone, and host resident.');
@@ -79,7 +79,7 @@ export default function VisitorsPage() {
 
     const tenant = tenants.find((t) => t.id === tenantId);
 
-    const newVisitor = operationsService.checkInVisitor({
+    const newVisitor = await operationsService.checkInVisitor({
       visitorName,
       phone,
       tenantId,

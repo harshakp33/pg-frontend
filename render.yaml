@@ -10,3 +10,7 @@ services:
         value: 20.18.0
       - key: PORT
         value: 10000
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false # PREREQUISITE: Configure in Render dashboard with backend HTTPS service URL (e.g. https://pg-backend.onrender.com)
+      - key: NEXT_PUBLIC_ENABLE_DEMO_LOGIN
+        value: "false" # Must remain false in production to prevent 1-click bypass

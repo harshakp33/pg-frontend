@@ -87,14 +87,14 @@ export default function PropertiesPage() {
     return matchesSearch && matchesType;
   });
 
-  const handleCreateProperty = (e: React.FormEvent) => {
+  const handleCreateProperty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !area || !managerName) {
       toast.error('Please fill in all required property details.');
       return;
     }
 
-    const newProp = propertyService.createProperty({
+    const newProp = await propertyService.createProperty({
       name,
       type,
       address,

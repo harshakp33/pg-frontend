@@ -87,7 +87,7 @@ export default function PaymentsPage() {
     return matchesSearch && matchesMethod;
   });
 
-  const handleRecordPayment = (e: React.FormEvent) => {
+  const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenantId || amount <= 0) {
       toast.error('Please select resident and enter valid amount.');
@@ -96,7 +96,7 @@ export default function PaymentsPage() {
 
     const tenant = tenants.find((t) => t.id === tenantId);
 
-    const newPayment = financeService.recordPayment({
+    const newPayment = await financeService.recordPayment({
       tenantId,
       invoiceId: invoiceId || undefined,
       propertyId: tenant?.propertyId || 'prop-1',

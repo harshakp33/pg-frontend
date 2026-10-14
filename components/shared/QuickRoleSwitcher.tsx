@@ -28,6 +28,14 @@ export function QuickRoleSwitcher() {
   const { role, loginAsRole, isLoaded } = useAuth();
   const router = useRouter();
 
+  const isDemoAllowed =
+    process.env.NODE_ENV !== 'production' ||
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true';
+
+  if (!isDemoAllowed) {
+    return null;
+  }
+
   const handleSwitch = (newRole: Role) => {
     loginAsRole(newRole);
     toast.success(`Switched role to: ${newRole.toUpperCase()}`);

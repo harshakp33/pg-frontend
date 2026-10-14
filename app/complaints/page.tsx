@@ -94,7 +94,7 @@ export default function ComplaintsPage() {
     return matchesSearch && matchesCat && matchesPriority && matchesStatus;
   });
 
-  const handleCreateComplaint = (e: React.FormEvent) => {
+  const handleCreateComplaint = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description || !tenantId) {
       toast.error('Please enter title, description, and select tenant.');
@@ -104,7 +104,7 @@ export default function ComplaintsPage() {
     const tenant = tenants.find((t) => t.id === tenantId);
     const staff = staffMembers.find((s) => s.id === assignedStaffId);
 
-    const newTicket = operationsService.createComplaint({
+    const newTicket = await operationsService.createComplaint({
       tenantId,
       propertyId: tenant?.propertyId || 'prop-1',
       roomId: tenant?.roomId,

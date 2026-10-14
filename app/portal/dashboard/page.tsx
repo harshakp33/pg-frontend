@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { TenantPortalShell } from '@/components/layout/TenantPortalShell';
@@ -28,11 +28,31 @@ import { tenantService } from '@/services/tenantService';
 import { propertyService } from '@/services/propertyService';
 import { financeService } from '@/services/financeService';
 import { operationsService } from '@/services/operationsService';
+import { portalService } from '@/services/portalService';
 import { formatINR, formatDate } from '@/lib/format';
 
 export default function TenantDashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const [liveDashboard, setLiveDashboard] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchLivePortal = async () => {
+      try {
+        setIsLoading(true);
+        const res = await portalService.getDashboard();
+        if (res) {
+          setLiveDashboard(res);
+        }
+      } catch (err) {
+        console.warn('Could not load live portal dashboard:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLivePortal();
+  }, []);
 
   // Find linked tenant record (defaults to Rahul Sharma tnt-1)
   const tenant = tenantService.getTenantById(user.tenantId || 'tnt-1') || tenantService.getTenants()[0];
@@ -45,6 +65,14 @@ export default function TenantDashboardPage() {
   const complaints = tenant ? operationsService.getComplaints().filter((c) => c.tenantId === tenant.id) : [];
   const notices = operationsService.getNotices().filter((n) => n.isPublished && (n.audience === 'all' || n.audience === 'tenants'));
   const weeklyMenu = operationsService.getFoodMenu();
+
+  // Resolved display values prioritizing live backend data
+  const displayName = liveDashboard?.profile?.fullName || tenant?.name || 'Resident';
+  const displayProperty = liveDashboard?.property?.name || property?.name || 'BLR Luxury Stays';
+  const displayRoom = liveDashboard?.currentAccommodation?.room?.roomNumber || room?.roomNumber || '101';
+  const displayBed = liveDashboard?.currentAccommodation?.bed?.bedNumber || bed?.bedNumber || '101-A';
+  const outstandingBal = liveDashboard ? Number(liveDashboard.outstandingBalance || 0) : (latestInvoice ? latestInvoice.balanceAmount : (tenant?.monthlyRent || 0));
+  const activeComplaintsCount = liveDashboard?.openComplaintsCount ?? complaints.filter((c) => c.status !== 'resolved' && c.status !== 'closed').length;
 
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const todayName = daysOfWeek[new Date().getDay()];
@@ -60,9 +88,9 @@ export default function TenantDashboardPage() {
   return (
     <TenantPortalShell>
       <PageHeader
-        title={`Welcome back, ${tenant?.name || 'Resident'}!`}
-        description={`${property?.name || 'Starlight Coliving'} • Room ${room?.roomNumber || '101'} • Bed ${bed?.bedNumber || '101-A'}`}
-        badge={<StatusBadge status={tenant?.status || 'active'} />}
+        title={`Welcome back, ${displayName}!`}
+        description={`${displayProperty} • Room ${displayRoom} • Bed ${displayBed}`}
+        badge={<StatusBadge status={liveDashboard?.profile?.status?.toLowerCase() || tenant?.status || 'active'} />}
         actions={
           <div className="flex items-center gap-2">
             <Link href="/portal/complaints">
@@ -85,21 +113,21 @@ export default function TenantDashboardPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <StatCard
           title="Rent Balance Due"
-          value={latestInvoice ? formatINR(latestInvoice.balanceAmount) : formatINR(tenant?.monthlyRent || 0)}
+          value={formatINR(outstandingBal)}
           subtitle={latestInvoice ? `Due by ${formatDate(latestInvoice.dueDate)}` : 'Due on 5th'}
           icon={CreditCard}
-          iconColor={latestInvoice && latestInvoice.balanceAmount > 0 ? 'text-amber-600 bg-amber-500/10' : 'text-emerald-600 bg-emerald-500/10'}
+          iconColor={outstandingBal > 0 ? 'text-amber-600 bg-amber-500/10' : 'text-emerald-600 bg-emerald-500/10'}
           onClick={() => router.push('/portal/rent')}
         />
         <StatCard
           title="My Bed & Room"
-          value={`Bed ${bed?.bedNumber || '101-A'}`}
-          subtitle={`Floor ${room?.floorNumber || 1} • Single Deluxe`}
+          value={`Bed ${displayBed}`}
+          subtitle={`Floor ${displayRoom.startsWith('1') ? 1 : 2} • Single Deluxe`}
           icon={BedDouble}
         />
         <StatCard
           title="Active Complaints"
-          value={complaints.filter((c) => c.status !== 'resolved' && c.status !== 'closed').length}
+          value={activeComplaintsCount}
           subtitle="Tickets in progress"
           icon={AlertCircle}
           onClick={() => router.push('/portal/complaints')}

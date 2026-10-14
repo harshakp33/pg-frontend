@@ -82,34 +82,55 @@ const demoAccounts: {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginAsRole } = useAuth();
+  const { loginAsRole, loginWithCredentials } = useAuth();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleQuickLogin = (role: Role) => {
-    loginAsRole(role);
-    toast.success(`Signed in as ${role.toUpperCase()}`);
-    if (role === 'tenant') {
-      router.push('/portal/dashboard');
-    } else {
-      router.push('/dashboard');
+  const isDemoAllowed = process.env.NODE_ENV !== 'production';
+
+  const handleQuickLogin = async (role: Role) => {
+    try {
+      setIsLoading(true);
+      await loginAsRole(role);
+      toast.success(`Signed in as ${role.toUpperCase()}`);
+      if (role === 'tenant') {
+        router.push('/portal/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to authenticate');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
+  const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       toast.error('Please enter an email address');
       return;
     }
-    // Match demo email or default to admin
-    const found = demoAccounts.find((a) => a.email.toLowerCase() === email.toLowerCase().trim());
-    if (found) {
-      handleQuickLogin(found.role);
-    } else {
-      loginAsRole('admin');
-      toast.success('Signed in with custom account');
-      router.push('/dashboard');
+    if (!password) {
+      toast.error('Please enter a password');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const found = demoAccounts.find((a) => a.email.toLowerCase() === email.toLowerCase().trim());
+      const role = found?.role || 'admin';
+      await loginWithCredentials(email, password, role);
+      toast.success(`Signed in as ${role.toUpperCase()}`);
+      if (role === 'tenant') {
+        router.push('/portal/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid credentials');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -135,77 +156,91 @@ export default function LoginPage() {
 
       {/* Main Container */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-4xl space-y-8">
+        <div className={`w-full ${isDemoAllowed ? 'max-w-4xl' : 'max-w-md'} space-y-8`}>
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-card text-[11px] font-medium text-muted-foreground shadow-2xs">
-              <Sparkles className="h-3 w-3 text-primary" />
-              <span>Interactive SaaS Demonstration</span>
-            </div>
+            {isDemoAllowed ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-card text-[11px] font-medium text-muted-foreground shadow-2xs">
+                <Sparkles className="h-3 w-3 text-primary" />
+                <span>Development & Demo Mode</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-card text-[11px] font-medium text-muted-foreground shadow-2xs">
+                <Shield className="h-3 w-3 text-primary" />
+                <span>Secure SaaS Authentication</span>
+              </div>
+            )}
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
               Sign In to PG Manager
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
-              Select any role below for instant 1-click access with simulated permissions and realistic Bangalore PG mock data.
+              {isDemoAllowed
+                ? 'Select a role below for instant testing access, or enter your credentials.'
+                : 'Enter your organization credentials to securely access your workspace.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className={isDemoAllowed ? "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" : "w-full"}>
             {/* Quick Demo Roles Column */}
-            <div className="lg:col-span-7 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-                1-Click Instant Demo Logins
-              </p>
-              <div className="space-y-2.5">
-                {demoAccounts.map((account) => {
-                  const Icon = account.icon;
-                  return (
-                    <Card
-                      key={account.role}
-                      onClick={() => handleQuickLogin(account.role)}
-                      className="p-3.5 bg-card hover:bg-muted/40 border-border/80 rounded-xl cursor-pointer transition-all duration-200 hover:border-primary/50 hover:shadow-xs group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg border ${account.badgeColor}`}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-foreground">
-                                {account.title}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground">
-                                ({account.email})
-                              </span>
+            {isDemoAllowed && (
+              <div className="lg:col-span-7 space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                  1-Click Instant Demo Logins
+                </p>
+                <div className="space-y-2.5">
+                  {demoAccounts.map((account) => {
+                    const Icon = account.icon;
+                    return (
+                      <Card
+                        key={account.role}
+                        onClick={() => handleQuickLogin(account.role)}
+                        className="p-3.5 bg-card hover:bg-muted/40 border-border/80 rounded-xl cursor-pointer transition-all duration-200 hover:border-primary/50 hover:shadow-xs group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg border ${account.badgeColor}`}>
+                              <Icon className="h-4 w-4" />
                             </div>
-                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
-                              {account.description}
-                            </p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-foreground">
+                                  {account.title}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  ({account.email})
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+                                {account.description}
+                              </p>
+                            </div>
                           </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs gap-1 group-hover:text-primary shrink-0 ml-2"
+                            disabled={isLoading}
+                          >
+                            <span>Sign In</span>
+                            <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs gap-1 group-hover:text-primary shrink-0 ml-2"
-                        >
-                          <span>Sign In</span>
-                          <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-                        </Button>
-                      </div>
-                    </Card>
-                  );
-                })}
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Manual Form Column */}
-            <div className="lg:col-span-5">
+            <div className={isDemoAllowed ? "lg:col-span-5" : "w-full"}>
               <Card className="p-6 bg-card border-border/80 rounded-2xl shadow-sm">
                 <form onSubmit={handleManualSubmit} className="space-y-4">
                   <div className="space-y-1">
-                    <h2 className="text-sm font-bold text-foreground">Manual Credentials</h2>
+                    <h2 className="text-sm font-bold text-foreground">
+                      {isDemoAllowed ? 'Manual Credentials' : 'Account Credentials'}
+                    </h2>
                     <p className="text-xs text-muted-foreground">
-                      Or type any valid demo email address
+                      {isDemoAllowed ? 'Or type your registered email address' : 'Sign in to access your portal'}
                     </p>
                   </div>
 
@@ -215,10 +250,11 @@ export default function LoginPage() {
                       <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         type="email"
-                        placeholder="admin@pgmanager.com"
+                        placeholder="owner@blrstays.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="pl-9 text-xs h-9"
+                        required
                       />
                     </div>
                   </div>
@@ -229,20 +265,18 @@ export default function LoginPage() {
                       <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         type="password"
+                        placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="pl-9 text-xs h-9"
+                        required
                       />
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full text-xs h-9 mt-2 font-medium">
-                    Continue to Dashboard
+                  <Button type="submit" className="w-full text-xs h-9 mt-2 font-medium" disabled={isLoading}>
+                    {isLoading ? 'Signing In...' : 'Continue to Dashboard'}
                   </Button>
-
-                  <p className="text-[10px] text-center text-muted-foreground">
-                    Demo credentials pre-filled. No real backend password check required.
-                  </p>
                 </form>
               </Card>
             </div>
@@ -252,7 +286,7 @@ export default function LoginPage() {
 
       {/* Footer */}
       <footer className="py-4 text-center text-xs text-muted-foreground border-t border-border/60 bg-background/50">
-        PG Manager SaaS Frontend Demo • All data persisted locally in browser localStorage
+        PG Manager SaaS • Secure Multi-Tenant Architecture
       </footer>
     </div>
   );

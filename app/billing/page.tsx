@@ -95,7 +95,7 @@ export default function BillingPage() {
     toast.success(`Generated ${count} monthly invoices for November billing run!`);
   };
 
-  const handleCreateCustomInvoice = (e: React.FormEvent) => {
+  const handleCreateCustomInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     const tenant = tenants.find((t) => t.id === tenantId);
     if (!tenant) return;
@@ -103,7 +103,7 @@ export default function BillingPage() {
     const subtotal = rentAmount + electricityAmount + foodAmount;
     const total = subtotal + lateFee;
 
-    const newInv = financeService.createInvoice({
+    const newInv = await financeService.createInvoice({
       tenantId,
       propertyId: tenant.propertyId,
       month,

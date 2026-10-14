@@ -3,8 +3,102 @@ import { getItem, setItem, STORAGE_KEYS } from '@/lib/storage';
 import { initialApplications, initialBookings, initialMoveIns, initialMoveOuts } from '@/data/bookings';
 import { propertyService } from './propertyService';
 import { tenantService } from './tenantService';
+import { apiClient } from '@/lib/apiClient';
 
 export const bookingService = {
+  // Live Backend: Bookings
+  fetchBookings: async (): Promise<Booking[]> => {
+    try {
+      const res = await apiClient.get<any>('/api/bookings');
+      const items = res?.items || (Array.isArray(res) ? res : res?.data || []);
+      if (Array.isArray(items) && items.length > 0) {
+        const mapped: Booking[] = items.map((b: any) => ({
+          id: b.id,
+          bookingCode: b.receiptNumber || `BKG-${b.id.substring(0, 8)}`,
+          applicantName: b.enquiries?.name || b.resident?.fullName || 'Resident',
+          phone: b.enquiries?.phone || b.resident?.phone || '',
+          email: b.enquiries?.email || b.resident?.email || '',
+          propertyId: b.propertyId,
+          roomId: b.roomId || 'room-1',
+          bedId: b.bedId || 'bed-1',
+          moveInDate: b.expectedMoveIn ? new Date(b.expectedMoveIn).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          tokenDeposit: Number(b.bookingAmount || 0),
+          monthlyRent: Number(b.beds?.rent || 8000),
+          totalDeposit: Number(b.beds?.securityDeposit || 16000),
+          status: (['pending', 'confirmed', 'cancelled', 'completed'].includes(b.status?.toLowerCase()) ? b.status.toLowerCase() : 'confirmed') as any,
+          notes: b.notes || '',
+          createdAt: b.bookingDate ? new Date(b.bookingDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        }));
+        setItem(STORAGE_KEYS.BOOKINGS, mapped);
+        return mapped;
+      }
+    } catch (err) {
+      console.warn('Could not fetch backend bookings:', err);
+    }
+    return bookingService.getBookings();
+  },
+
+  createBookingLive: async (data: any): Promise<Booking> => {
+    try {
+      const res = await apiClient.post<any>('/api/bookings', data);
+      if (res) {
+        const b = res.data || res;
+        const newBooking: Booking = {
+          id: b.id,
+          bookingCode: b.receiptNumber || `BKG-${b.id.substring(0, 8)}`,
+          applicantName: data.applicantName || 'Resident',
+          phone: data.phone || '',
+          email: data.email || '',
+          propertyId: b.propertyId || data.propertyId,
+          roomId: b.roomId || data.roomId || 'room-1',
+          bedId: b.bedId || data.bedId || 'bed-1',
+          moveInDate: b.expectedMoveIn || data.expectedMoveInDate || new Date().toISOString().split('T')[0],
+          tokenDeposit: Number(b.bookingAmount || data.tokenAmount || data.tokenDeposit || 0),
+          monthlyRent: Number(data.monthlyRent || 8000),
+          totalDeposit: Number(data.totalDeposit || 16000),
+          status: (['pending', 'confirmed', 'cancelled', 'completed'].includes(b.status?.toLowerCase()) ? b.status.toLowerCase() : 'confirmed') as any,
+          notes: b.notes || '',
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        const list = bookingService.getBookings();
+        setItem(STORAGE_KEYS.BOOKINGS, [newBooking, ...list]);
+        return newBooking;
+      }
+    } catch (err) {
+      console.warn('Backend booking creation failed, using local store:', err);
+    }
+    return bookingService.createBooking(data);
+  },
+
+  // Live Backend: Move-Ins
+  fetchMoveIns: async (): Promise<MoveInRecord[]> => {
+    try {
+      const res = await apiClient.get<any>('/api/move-ins');
+      const items = res?.items || (Array.isArray(res) ? res : res?.data || []);
+      if (Array.isArray(items) && items.length > 0) {
+        const mapped: MoveInRecord[] = items.map((m: any) => ({
+          id: m.id,
+          tenantId: m.residentId,
+          propertyId: m.propertyId,
+          roomId: m.roomId || 'room-1',
+          bedId: m.bedId || 'bed-1',
+          agreementDate: m.moveInDate ? new Date(m.moveInDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          depositReceived: Number(m.depositPaid || m.securityDepositAmount || 0),
+          firstRentReceived: Number(m.firstInvoiceAmount || 0),
+          inventoryChecked: true,
+          keysHandedOver: true,
+          kycCompleted: true,
+          remarks: m.notes || '',
+        }));
+        setItem(STORAGE_KEYS.MOVE_INS, mapped);
+        return mapped;
+      }
+    } catch (err) {
+      console.warn('Could not fetch backend move-ins:', err);
+    }
+    return bookingService.getMoveIns();
+  },
+
   // Applications
   getApplications: (): Application[] => {
     return getItem<Application[]>(STORAGE_KEYS.APPLICATIONS, initialApplications);
